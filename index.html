@@ -1,0 +1,593 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Firebase Codelab</title>
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Firebase Codelab</h1>
+        <p>Getting started using Firebase as seen at a April 2015 meetup at GDG Oakdale.</p>
+        <ul>
+          <li><a href="https://github.com/GDGOakdale/firebase-android-codelab-gdg-oakdale/archive/base-solution.zip">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/GDGOakdale/firebase-android-codelab-gdg-oakdale/archive/base-solution.tar.gz">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/GDGOakdale/firebase-android-codelab-gdg-oakdale/">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h3>
+          <a id="welcome" class="anchor" href="#welcome" aria-hidden="true">
+            <span class="octicon octicon-link"></span>
+          </a>Welcome!
+        </h3>
+        <p>This codelab is designed to help you learn about using Firebase. During this lab, we're going to build a variation of the classic game Hangman.</p>
+        
+        <h3>
+          <a id="things-we-use" class="anchor" href="#things-we-use" aria-hidden="true">
+            <span class="octicon octicon-link"></span>
+          </a>Things we'll use
+        </h3>
+        <p>Documentation! You can never have enough of it and during this codelab you may find yourself looking for one more method to go that extra mile. Docs you may find useful include:</p>
+        
+        <ul>
+          <li><a href="https://www.firebase.com/docs/android/">Firebase Android Platform Documentation</a></li>
+        </ul>
+        
+        <h3>
+          <a id="getting-started" class="anchor" href="#getting-started" aria-hidden="true">
+            <span class="octicon octicon-link"></span>
+          </a>Getting started
+        </h3>
+
+        <p>To help make things easier, we've defined a base starter project that can be used with Android Studio. You can pull this branch from <a href="https://github.com/GDGOakdale/firebase-android-codelab-gdg-oakdale/tree/base-solution">base-solution</a>:</p>
+
+<pre><code>git checkout -b base-solution origin/base-solution</code></pre>
+
+        <p>Once you've pulled the project from the git branch, you can import the project in Android Studio via File &raquo; Import Project. Once the project has imported, you'll see:</p>
+
+        <img src="images/screenshot-20150415-project-import.png" alt="Imported into Android Studio">
+
+        <p>Now, let's create a new project within our Firebase account:</p>
+        
+        <img src="images/screenshot-20150408-create-app.png" alt="Create app in dashboard">
+
+        <p>Now that we have an endpoint, let's wire up Firebase in MainActivity.java:</p>
+
+<pre><code>public class MainActivity extends ListActivity {
+
+    private static final String BASE_FIREBASE_URL = "YOUR_ENDPOINT_HERE";
+
+    private String mUserId;
+    private Firebase mMessagesRef;
+    ...
+</code></pre>
+
+        <p>Now we wire up our connection in our <code>onStart()</code>:</p>
+
+<pre><code>mConnectedListener = mMessagesRef.getRoot().child(".info/connected").addValueEventListener(new ValueEventListener() {
+    @Override
+    public void onDataChange(DataSnapshot dataSnapshot) {
+        boolean connected = (Boolean) dataSnapshot.getValue();
+        if (connected) {
+            Toast.makeText(MainActivity.this, "Connected to Firebase", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(MainActivity.this, "Disconnected from Firebase", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    public void onCancelled(FirebaseError firebaseError) {
+        // No-op
+    }
+});  
+</code></pre>
+
+      <h3>
+        <a id="getting-started" class="anchor" href="#more-events-please" aria-hidden="true">
+          <span class="octicon octicon-link"></span>
+        </a>Every game needs a chat
+      </h3>
+      
+      <p>Let's start with setting a reference to our child to get our messages in our <code>onCreate()</code>:</p>
+
+<pre><code>this.mMessagesRef = new Firebase(this.BASE_FIREBASE_URL).child("messages");
+</code></pre>
+
+      <p>Since our base solution comes with a layout, let's create some hooks so we can interact and send messages:</p>
+
+<pre><code>EditText messageText = (EditText)findViewById(R.id.messageInput);
+messageText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+    @Override
+    public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+        if (actionId == EditorInfo.IME_NULL && event.getAction() == KeyEvent.ACTION_DOWN) {
+            sendMessage();
+        }
+        return true;
+    }
+});
+
+Button sendButton = (Button)findViewById(R.id.sendButton);
+sendButton.setOnClickListener(new View.OnClickListener() {
+    @Override
+    public void onClick(View v) {
+        sendMessage();
+    }
+});
+</code></pre>
+
+      <p>In the code above, we can see we have a defined method called <code>sendMessage()</code>. Let's update that method such that we send our message to Firebase:</p>
+
+<pre><code>EditText inputText = (EditText)findViewById(R.id.messageInput);
+String message = inputText.getText().toString();
+
+if(!message.equals("")) {
+    Chat chat = new Chat(this.mUserId, message, this.mUserId);
+    this.mMessagesRef.push().setValue(chat);
+}
+
+inputText.setText(""); 
+</code></pre>
+
+      <p>Great! But now we need to get our messages into our application. For that, we'll use a listview and some bindings in <code>onStart()</code>:</p>
+
+<pre><code>final ListView listView = getListView();
+mChatListAdapter = new ChatListAdapter(mMessagesRef.limitToLast(20), this, R.layout.message);
+listView.setAdapter(mChatListAdapter);
+mChatListAdapter.registerDataSetObserver(new DataSetObserver() {
+    @Override
+    public void onChanged() {
+        super.onChanged();
+        listView.setSelection(mChatListAdapter.getCount() - 1);
+    }
+});
+</code></pre>
+
+      <blockquote>Tip: to make life a little easier, we've added the ChatListAdapter into the base starter project for this codelab. Take a look with that adapter to see how the callout to Firebase is completed.</blockquote>
+      
+      <p>With our initial code we can send messages and receive, and our messages are now synced to Firebase and all connected clients.</p>
+
+      <blockquote>To verify the messages are being sent, go directly to your Firebase url in your browser. This is the Firebase Dashboard where you can view / edit your existing data.</blockquote>
+
+      <h3>
+        <a id="getting-started" class="anchor" href="#more-events-please" aria-hidden="true">
+          <span class="octicon octicon-link"></span>
+        </a>Every game needs some rules
+      </h3>
+      
+      <p>How does one build our Hangman on Fire application? We need to lay some ground rules:</p>
+
+      <ol>
+        <li>The game will be seven (7) misses, at which point the game ends</li>
+        <li>If a player guesses a letter correctly, they continue.</li>
+        <li>If a player guesses a letter incorrectly, they concede their turn to the next player.</li>
+        <li>All players in the chat play.</li>
+      </ol>
+
+      <blockquote>Tip: We understand that you could do a lot of fancy things with this, but let's keep it simple to start!</blockquote>
+
+      <h3>
+        <a id="getting-started" class="anchor" href="#more-events-please" aria-hidden="true">
+          <span class="octicon octicon-link"></span>
+        </a>Defining our class
+      </h3>
+      
+      <p>We're going to build a class called <code>FireHangman</code>. We can hash out the basic methods that we'll need:</p>
+
+      <ol>
+        <li>StartGame() - start a game of Hangman on Fire</li>
+        <li>Guess() - guess a letter</li>
+      </ol>
+
+      <p>What this looks like mocked out in code:</p>
+
+<pre><code>public FireHangman (String firebaseURL, String userId) {
+
+}
+
+public void StartGame() {
+
+}
+
+public void Guess(String letter) {
+
+}
+</code></pre>
+
+      <blockquote>Tip: We've defined this structure in the base starter project as well as some utility methods; feel free to change as you please!</blockquote>
+      
+      <p>This will help us get started. Now let's start building our Hangman on Fire game logic.</p>
+
+      <h3>
+        <a id="getting-started" class="anchor" href="#more-events-please" aria-hidden="true">
+          <span class="octicon octicon-link"></span>
+        </a>Defining our constructor
+      </h3>
+      
+      <p>Let's instantiate variables to our <code>FireHangman</code> class:</p>
+
+<pre><code>this.mBaseRef = new Firebase(firebaseURL);
+this.mMessagesRef = this.mBaseRef.child("messages");
+this.mPlayersRef = this.mBaseRef.child("players");
+this.mGameRef = this.mBaseRef.child("game");
+this.mWordsRef = this.mBaseRef.child("words");
+this.mUserId = userId;</code></pre>
+
+    <p>Now we need to set ourselves as a player (or verify that we already exist):</p>
+
+<pre><code>mPlayersRef.runTransaction(new Transaction.Handler() {
+  @Override
+  public Transaction.Result doTransaction(MutableData mutableData) {
+    GenericTypeIndicator&lt;List&lt;String&gt;&gt; t= new GenericTypeIndicator&lt;List&lt;String&gt;&gt;() {};
+    playerList = mutableData.getValue(t);
+
+    if(playerList == null) {
+      playerList = new ArrayList<String>();
+    }
+
+    if (!playerList.contains(mUserId)) {
+      playerList.add(mUserId);
+    }
+
+    mPlayerId = playerList.indexOf(mUserId);
+
+    mutableData.setValue(playerList);
+
+    return Transaction.success(mutableData);
+  }
+
+  @Override
+  public void onComplete(FirebaseError firebaseError, boolean b, DataSnapshot dataSnapshot) {
+
+  }
+});</code></pre>
+
+      <p>A new piece added above is using <code>runTransaction</code>.  This allows us to ensure other players don't overwrite the value stored in <code>playerList</code>.</p>
+
+      <blockquote>For more information on Firebase transactions see <a href="https://www.firebase.com/docs/java-api/javadoc/com/firebase/client/Firebase.html#runTransaction(com.firebase.client.Transaction.Handler)">Firebase.runTransaction()</a></blockquote>
+
+      <p>Finally, let's fire up our game in <code>MainActivity.java</code> in our <code>onCreate()</code>:</p>
+
+<pre><code>// Method in base starter project that sets this.mUserId
+setupUsername();
+
+this.mMessagesRef = new Firebase(this.BASE_FIREBASE_URL).child("messages");
+
+this.mFireHangman = new FireHangman(this.BASE_FIREBASE_URL, this.mUserId);</code></pre>
+
+      <p>Lastly, we need to give our game a way to communicate with our players.  Notice we're using the same process as the chat messages are being handled.
+
+      <h3>
+        <a id="getting-started" class="anchor" href="#more-events-please" aria-hidden="true">
+          <span class="octicon octicon-link"></span>
+        </a>Defining our StartGame() method
+      </h3>
+
+      <p>Now that we have the basics of our player setup, we can now begin building the methods to start our game. First things first: we need some words. For this codelab, we can simply add words as a child to our tree. We can use the following data structure as a sample:</p>
+      
+<pre><code>{
+  "hint": "One of the co-founders of Firebase in 2011.",
+  "word": "Andrew Lee"
+}
+</code></pre>
+
+      <p>We could make a method to push this data, but we can use a cool feature of the Firebase dashboard and add/edit data on-the-fly:</p>
+      
+      <img src="images/screenshot-20150408-adding-data-manual.png" alt="Adding data through the dashboard">
+
+      <p>Now that we have some data, we can pull that data for use in our constructor:</p>
+      
+<pre><code>mWordsRef.addValueEventListener(new ValueEventListener() {
+    @Override
+    public void onDataChange(DataSnapshot dataSnapshot) {
+        GenericTypeIndicator&lt;List&lt;Word&gt;&gt; t = new GenericTypeIndicator&lt;List&lt;Word&gt;&gt;() {};
+        mWords = dataSnapshot.getValue(t);
+    }
+
+    @Override
+    public void onCancelled(FirebaseError firebaseError) {
+        // No-op
+    }
+});
+</code></pre>
+
+      <p>Now that we have some words, let's update our <code>StartGame()</code> in <code>FireHangman.java</code>:</p>
+
+<pre><code>public void StartGame() {
+  if(this.mIsGameRunning) {
+      BotSays("Hey, pay attention. We've already started a game.");
+      BotSays("The current hint is: " + this.mCurrentGame.getMessage());
+  }
+  else {
+      SetRandomWord();
+  }
+}
+</code></pre>
+
+      <p>At this point we can define <code>SetRandomWord()</code> to select a random word and send our game state out to players. Since we've loaded our words into <code>mWords</code>, we handle this via:</p>
+      
+<pre><code>Random random = new Random();
+int randomNum = random.nextInt(this.mWords.size() - 1);
+
+Word selectedWord = this.mWords.get(randomNum);
+</code></pre>
+  
+      <p>This only gets us half way there; we need some means to tell everyone who's playing our game what's going on. For this, we need to tell Firebase about the state of our game:</p>
+
+<pre><code>  Game game = new Game();
+  game.setWord(selectedWord.getWord());
+  game.setMessage(selectedWord.getHint());
+  game.setWordState(GetBlanksForWord(selectedWord.getWord()));
+
+  this.mGameRef.push().setValue(game);
+
+  BotSays("New Game started! Word/Phrase: " + GetBlanksForWord(selectedWord.getWord()));
+  BotSays("The current hint is: " + selectedWord.getHint());
+</code></pre>
+
+      <blockquote>Tip: Why aren't we setting all the game state fields? Check the Game class constructor for the answer!</blockquote>
+
+      <p>Our game state contains the following fields:</p>
+      
+      <ol>
+        <li>wordState - which signifies the letter replacements of our word</li>
+        <li>usedLetters - letters which people have guessed</li>
+        <li>turn - which player's turn is it</li>
+        <li>left - number of guesses left in the current game</li>
+      </ol>
+      
+      <p>We also need to tell the first player that they need to guess:</p>
+      
+<pre><code>mPlayersRef.child("0").addListenerForSingleValueEvent(new ValueEventListener() {
+  @Override
+  public void onDataChange(DataSnapshot dataSnapshot) {
+      String player = dataSnapshot.getValue(String.class);
+      BotSays("It's your turn " + player + "! Guess with /guess {{letter}}");
+  }
+
+  @Override
+  public void onCancelled(FirebaseError firebaseError) {
+      // No-op
+  }
+});
+</code></pre>
+
+      <p>But how do we tell if the <code>mIsGameRunning</code> is set? We'll need to update our constructor to add a few hooks to listen for changes to our game state:</p>
+      
+<pre><code>mGameRef.addChildEventListener(new ChildEventListener() {
+  @Override
+  public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+      if(dataSnapshot.getValue() == null) {
+          mIsGameRunning = false;
+      }
+      else {
+          mIsGameRunning = true;
+          mCurrentGameRef = mGameRef.child(dataSnapshot.getKey());
+          mCurrentGame = dataSnapshot.getValue(Game.class);
+
+          if(mCurrentGame.getWord().equals(mCurrentGame.getWordState()) || mCurrentGame.getLeft() == 0) {
+              Reset();
+          }
+      }
+  }
+
+  @Override
+  public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+      if(dataSnapshot.getValue() == null) {
+          mIsGameRunning = false;
+      }
+      else {
+          mIsGameRunning = true;
+          mCurrentGameRef = mGameRef.child(dataSnapshot.getKey());
+          mCurrentGame = dataSnapshot.getValue(Game.class);
+
+          if(mCurrentGame.getWord().equals(mCurrentGame.getWordState()) || mCurrentGame.getLeft() == 0) {
+              Reset();
+          }
+      }
+  }
+  ...
+});
+</code></pre>
+     
+      <p>Now when we push our game state out on either <code>StartGame()</code> or future updates, we can update our players on what's happening.</p>
+      
+      <p>Finally, we need some means to start our game from the chat. Let's update our <code>sendMessage()</code> handler to do a check for the "/start" command:</p>
+      
+<pre><code>EditText inputText = (EditText)findViewById(R.id.messageInput);
+String message = inputText.getText().toString();
+
+if(message.equals("/start")){
+    this.mFireHangman.StartGame();
+}
+else if(!message.equals("")) {
+    Chat chat = new Chat(this.mUserId, message, this.mUserId);
+    this.mMessagesRef.push().setValue(chat);
+}
+
+inputText.setText("");
+</code></pre>
+
+      <h3>
+        <a id="getting-started" class="anchor" href="#more-events-please" aria-hidden="true">
+          <span class="octicon octicon-link"></span>
+        </a>Defining our Guess() method
+      </h3>
+      
+      <p>At this point, we have general chat, players, and the start of a game. But now we need to handle guesses and player turns so that we can actually finish a game! Let's start working on our <code>Guess()</code> method in <code>FireHangman.java</code>.</p>
+
+      <p>Unlike our <code>StartGame()</code> method, guess takes an input from the user and checks to see if we have a hit. But even before we do that, we should probably check if it's our turn:</p>
+      
+<pre><code>if(this.mCurrentGame.getTurn() != this.mPlayerId){
+  BotSays("Whooaaa there " + this.mUserId + ", it's not your turn. Slow your roll.");
+}
+else {
+  // Our logic
+}
+</code></pre>
+      
+      <p>Now that we know whether it's our turn our not, it's time to start guessing. Before we can even check our letter, first let's setup some logic we're going to need and then we can check our selected word:</p>
+      
+<pre><code>this.mCurrentGame.setWordState(UpdateBlanksForWord(letter));
+this.mCurrentGame.setUsedLetters(this.mCurrentGame.getUsedLetters() + letter);
+
+if(this.mCurrentGame.getWord().indexOf(letter) >= 0) {
+  BotSays("We have a hit captain!");
+}
+else {
+  BotSays("We have missed, the meter grows towards death.");
+}
+</code></pre>
+
+      <p>Next, let's focus on the happy case where we're winning and have matched a letter. We know we need to update the game state and let people know who's turn it is (in this case, a match means the player keeps guessing until a miss occurs), but we also need to account for the case where we win:</p>
+      
+<pre><code>if(this.mCurrentGame.getWord().indexOf(letter) >= 0) {
+  BotSays("We have a hit captain!");
+
+  if(this.mCurrentGame.getWord().equals(this.mCurrentGame.getWordState())) {
+      BotSays("Winner winner firebase dinner! You did it " + this.mUserId + "! Answer:" + this.mCurrentGame.getWord());
+  }
+  else {
+      BotSays("Turns left: " + this.mCurrentGame.getLeft());
+      BotSays("Word state: " + this.mCurrentGame.getWordState());
+  }
+}
+</code></pre>
+
+      <p>Not too complex: we check the <code>mCurrentGame.getWord()</code> against the updated word state and if they match, we know the player has won the game. If not, we can simply let people know that the word state has changed and can update our existing game state.</p>
+
+      <p>What happens if we miss a letter? We'll need to some additional work. One, we have to change the player turn. Two, we have to check if the game is over due to running out of guesses. Three, we have to inform the next player it's their turn.</p>
+      
+<pre><code>if(this.mCurrentGame.getWord().indexOf(letter) >= 0) {
+    ...
+}
+else {
+  BotSays("We have missed, the meter grows towards death.");
+  this.mCurrentGame.setLeft(this.mCurrentGame.getLeft() - 1);
+
+  if(this.mCurrentGame.getLeft() == 0) {
+    BotSays("It's game over mannnnn! Answer was: " + this.mCurrentGame.getWord());
+  }
+  else {
+    BotSays("Turns left: " + this.mCurrentGame.getLeft());
+    BotSays("Word state: " + this.mCurrentGame.getWordState());
+
+    mPlayersRef.child(Integer.toString(this.mPlayerId + 1)).addListenerForSingleValueEvent(new ValueEventListener() {
+        @Override
+        public void onDataChange(DataSnapshot dataSnapshot) {
+            int nextTurn = 0;
+
+            if (dataSnapshot.getValue() != null) {
+                nextTurn = mPlayerId + 1;
+            }
+
+            mCurrentGame.setTurn(nextTurn);
+            mCurrentGameRef.setValue(mCurrentGame);
+
+            mPlayersRef.child(Integer.toString(nextTurn)).addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    if(dataSnapshot.getValue() != null) {
+                        BotSays("It's your turn " + dataSnapshot.getValue() + "! Guess with /guess {{letter}}");
+                    }
+                }
+
+                @Override
+                public void onCancelled(FirebaseError firebaseError) {
+                    // No-op
+                }
+            });
+        }
+
+        @Override
+        public void onCancelled(FirebaseError firebaseError) {
+            // No-op
+        }
+    });
+  }
+}
+</code></pre>
+      
+      <p>Things to note in the above code:</p>
+      
+      <ol>
+        <li>When <code>this.mCurrentGame.getLeft() == 0</code>, we still push an update to the state of left because we'll need to inform other players the game has ended.</li>
+        <li>If the game isn't over, we need to grab the next child from our <code>mPlayersRef</code> so that we can increment the turn. If that <code>dataSnapshot.getValue()</code> is null, we simply go back to the first player.</li>
+        <li>We pull the <code>dataSnapshot.getValue()</code> for the decided user so the bot can send a message.</li>
+      </ol>
+      
+      <p>We can make sure all clients are update to date by resetting the game state when the game ends
+      by updating our <code>onChildChanged()</code> handler:</p>
+      
+<pre><code>if(mCurrentGame.getWord().equals(mCurrentGame.getWordState()) || mCurrentGame.getLeft() == 0) {
+  Reset();
+}</code></pre>
+
+      <p>Our <code>Reset()</code> method is simply defined as:</p>
+
+<pre><code>private void Reset() {
+  this.mGameRef.removeValue();
+  this.mIsGameRunning = false;
+}  
+</code></pre>
+
+      <p>Finally, let's update our <code>sendMessage()</code> handler to do a check for the "/guess {{letter}}" command:</p>
+
+<pre><code>EditText inputText = (EditText)findViewById(R.id.messageInput);
+String message = inputText.getText().toString();
+
+if(message.equals("/start")){
+    this.mFireHangman.StartGame();
+}
+else if(message.startsWith("/guess")){
+    String letter = message.replace("/guess", "").trim();
+    this.mFireHangman.Guess(letter);
+}
+else if(!message.equals("")) {
+    Chat chat = new Chat(this.mUserId, message, this.mUserId);
+    this.mMessagesRef.push().setValue(chat);
+}
+
+inputText.setText("");
+</code></pre>
+      
+      <h3>
+        <a id="getting-started" class="anchor" href="#more-events-please" aria-hidden="true">
+          <span class="octicon octicon-link"></span>
+        </a>Success!
+      </h3>
+
+      <p>Congratulations! You have completed this codelab! Have some extra time? Things for consideration:</p>
+
+      <ul>
+        <li>Want to limit the amount of time a player can guess? Implement a timer that increments the turn after X amount of seconds.</li>
+        <li>Make it look pretty (pretty bare bones at the moment :-)</li>
+      </ul>
+
+      <h3>
+        <a id="getting-started" class="anchor" href="#more-events-please" aria-hidden="true">
+          <span class="octicon octicon-link"></span>
+        </a>Resources
+      </h3>
+
+      <ul>
+        <li><a href="https://www.firebase.com/docs/">Firebase Docs Home</a></li>
+        <li><a href="https://www.firebase.com/docs/android/examples.html">Firebase Android Code Examples</a></li>
+      </ul>
+
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/jamesduvall">jamesduvall</a> and <a href="https://github.com/justinribeiro">justinribeiro</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+  </body>
+</html>
