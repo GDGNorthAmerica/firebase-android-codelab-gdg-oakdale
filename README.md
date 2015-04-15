@@ -1,6 +1,6 @@
 ## Firebase Android Codelab - GDG Oakdale
 
-> This is the base solution; you can pull this branch to start as it defines some of the initial models for our data for ease of getting started.
+> This is the complete solution to the codelab; you can pull this branch for comparision, tips, or modification.
 
 A codelab for getting started with Firebase by building a basic game, Hangman on Fire.
 
