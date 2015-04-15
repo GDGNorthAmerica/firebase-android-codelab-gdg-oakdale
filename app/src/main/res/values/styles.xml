@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="actionBarStyle">@style/Base.Theme.AppCompat.Light.DarkActionBar</item>
+
+        <!-- Main theme colors -->
+        <!--   your app branding color for the app bar -->
+        <item name="colorPrimary">#ffc3bc00</item>
+        <!--   darker variant for the status bar and contextual app bars -->
+        <item name="colorPrimaryDark">#ff9f8a00</item>
+        <!--   theme UI controls like checkboxes and text fields -->
+        <item name="colorAccent">#ffffee00</item>
+    </style>
+</resources>
