@@ -61,7 +61,7 @@
 
         <p>Now that we have an endpoint, let's wire up Firebase in MainActivity.java:</p>
 
-<pre><code>public class MainActivity extends ListActivity {
+<pre><code>public class MainActivity extends Activity {
 
     private static final String BASE_FIREBASE_URL = "YOUR_ENDPOINT_HERE";
 
@@ -138,7 +138,7 @@ inputText.setText("");
 
       <p>Great! But now we need to get our messages into our application. For that, we'll use a listview and some bindings in <code>onStart()</code>:</p>
 
-<pre><code>final ListView listView = getListView();
+<pre><code>final ListView listView = (ListView) findViewById(R.id.list);
 mChatListAdapter = new ChatListAdapter(mMessagesRef.limitToLast(20), this, R.layout.message);
 listView.setAdapter(mChatListAdapter);
 mChatListAdapter.registerDataSetObserver(new DataSetObserver() {
