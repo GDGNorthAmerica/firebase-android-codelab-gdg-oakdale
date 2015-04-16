@@ -1,6 +1,6 @@
 package io.github.gdgoakdale.hangmanonfire;
 
-import android.app.ListActivity;
+import android.app.Activity;
 import android.content.SharedPreferences;
 import android.database.DataSetObserver;
 import android.os.Bundle;
@@ -22,7 +22,7 @@ import com.firebase.client.ValueEventListener;
 import java.util.Random;
 
 
-public class MainActivity extends ListActivity {
+public class MainActivity extends Activity {
 
     private static final String BASE_FIREBASE_URL = "YOUR_ENDPOINT_HERE";
 
@@ -70,7 +70,7 @@ public class MainActivity extends ListActivity {
     @Override
     public void onStart() {
         super.onStart();
-        final ListView listView = getListView();
+        final ListView listView = (ListView) findViewById(R.id.list);
         mChatListAdapter = new ChatListAdapter(mMessagesRef.limitToLast(20), this, R.layout.message);
         listView.setAdapter(mChatListAdapter);
         mChatListAdapter.registerDataSetObserver(new DataSetObserver() {
